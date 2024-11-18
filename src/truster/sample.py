@@ -32,9 +32,11 @@ class Sample:
             try:
                 for root, dirs, files in os.walk(self.raw_path):
                   for file in files:
-                    if self.sample_name in file or self.sample_name.replace("-", "_") in file:
+                    sample_name_format = self.sample_name.replace("-", "_")
+                    log.write("Checking for files: " + self.sample_name + " or, " + sample_name_format + "\n")
+                    if self.sample_name in file or sample_name_format in file:
                        samples_files.append(file)
-                       cmd = "md5 " + os.path.join(root, file) + " >> " + sample_outfile + " || exit 2"
+                       cmd = "md5sum " + os.path.join(root, file) + " >> " + sample_outfile + " || exit 2"
                        subprocess.run(cmd, shell=True)
             except KeyboardInterrupt:
                 msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC + "\n"
