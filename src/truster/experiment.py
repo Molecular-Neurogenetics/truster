@@ -103,6 +103,7 @@ class Experiment:
             with open(self.logfile, "a") as log:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
                     for sample in self.samples.values():
+                        log.write("md5sum of " + sample.sample_id + "\n")
                         executor.submit(sample.md5sum, outdir)
         except KeyboardInterrupt:
             msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC + "\n" + ".\n"
