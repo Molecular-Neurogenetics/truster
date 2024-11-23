@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: truster
-Version: 0.1.1
+Version: 0.1.2
 Summary: Analyse transposons expression in single cell data.
-Home-page: https://github.com/ra7555ga-s/trusTEr
+Home-page: https://github.com/Molecular-Neurogenetics/trusTEr
 Author: Raquel Garza
 Author-email: raquelgarza95@gmail.com
 Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
@@ -181,5 +181,5 @@ True:
 False:
 
 ---
-You can read the functions' documentation and some tutorials at https://raquelgarza.github.io/truster/
+You can read the functions' documentation and some tutorials at https://molecular-neurogenetics.github.io/truster/
 

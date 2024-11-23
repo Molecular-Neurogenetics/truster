@@ -171,5 +171,5 @@ True:
 False:
 
 ---
-You can read the functions' documentation and some tutorials at https://raquelgarza.github.io/truster/
+You can read the functions' documentation and some tutorials at https://molecular-neurogenetics.github.io/truster/
 

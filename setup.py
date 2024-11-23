@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name = "truster",
-    version = "0.1.1",
+    version = "0.1.2",
     packages = setuptools.find_packages("src"),
     package_dir = {'truster' : 'src/truster'},
     package_data={'truster' : ['r_scripts/*.r', 'r_scripts/*.R', 'py_scripts/plotVelocity']},
@@ -16,6 +16,6 @@ setuptools.setup(
     description = "Analyse transposons expression in single cell data.",
     long_description = readme,
     long_description_content_type='text/markdown',
-    url="https://github.com/ra7555ga-s/trusTEr",
+    url="https://github.com/Molecular-Neurogenetics/trusTEr",
     classifiers = ["Topic :: Scientific/Engineering :: Bio-Informatics"])
 
