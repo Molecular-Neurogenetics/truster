@@ -1,0 +1,10 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Garza
+  given-names: Raquel
+orcid: https://orcid.org/0000-0002-2524-3055
+title: TrusTEr
+version: v0.1.2
+date-released: 2024-12-10
+                                
