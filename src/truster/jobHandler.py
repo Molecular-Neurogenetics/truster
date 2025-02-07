@@ -7,6 +7,7 @@ import os
 
 def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, modules = None):
     with open(logfile, "a") as log:
+        log.write(str(cmd))
         if slurm != None:
             cmd = ' '.join(cmd)
             job_file =  os.path.join((fun + "_scripts/"), (name + "_" + fun + ".sh"))
