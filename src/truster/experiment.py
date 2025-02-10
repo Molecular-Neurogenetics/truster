@@ -65,6 +65,40 @@ class Experiment:
             log.write(msg)
             print(msg.strip())
 
+    def subset_experiment(self, sample_ids):
+        samples_dict = copy.deepcopy(self.samples)
+        for sample_id, sample in samples_dict.items():
+            if(sample_id not in sample_ids):
+                self.unregister_sample(sample_id)
+        
+        if hasattr(self, 'merge_samples_dict'):
+            samples_dict = copy.deepcopy(self.merge_samples_dict)
+            for sample_id, sample in samples_dict.items():
+                if(sample_id not in sample_ids):
+                    self.merge_samples_dict.pop(sample_id)
+
+        with open(self.logfile, "a") as log:
+            if sample_ids == self.samples.items():
+                msg = ["Samples updated.\n"]
+                if hasattr(self, 'merge_samples_dict'):
+                    if sample_ids == self.merge_samples_dict.items():
+                        msg.append("Merged samples updated.\n")
+                else:
+                    msg.append("Merged samples not updated.\n")
+            else:
+                msg = ["Samples not updated.\n"]
+                if hasattr(self, 'merge_samples_dict'):
+                    if sample_ids != self.merge_samples_dict.items():
+                        msg.append("Merged samples not updated.\n")
+
+            log.write('\n'.join(msg))
+            print(msg)
+
+            registered_samples = '\n'.join([sample_id for sample_id, sample in self.samples.items()])
+            msg = f"Experiment with subset {sample_ids}:\n {registered_samples}\n"
+            log.write(msg)
+            print(msg)
+
     def register_samples_from_path(self, indir, folder_names_as_sample_ids=True):
         def path_to_samples(path):
             # Returns a list of lists containing the name of the last directory before the lane files and a file
@@ -146,7 +180,6 @@ class Experiment:
             print(msg)
             with open(self.logfile, "a") as log:
                 log.write(msg)
-
 
     def set_quantification_outdir(self, sample_id, cellranger_outdir):
         with open(self.logfile, "a") as log:
@@ -372,9 +405,12 @@ class Experiment:
                 if(i.endswith(".tsv")):
                     cluster_name = i.split(".tsv")[0]
                     sample_id = cluster_name.split("_merged.clusters")[0]
-                    cluster = Cluster(cluster_name = cluster_name, tsv = os.path.join(merge_samples_outdir, i), logfile = self.logfile)
-
-                    self.merge_samples_dict[sample_id].clusters.append(cluster)
+                    if sample_id in [sample_id for sample_id, sample in self.samples.items()]: # Let's not register clusters from unregistered samples
+                        cluster = Cluster(cluster_name = cluster_name, tsv = os.path.join(merge_samples_outdir, i), logfile = self.logfile)
+                        self.merge_samples_dict[sample_id].clusters.append(cluster)
+                    else:
+                        print(sample_id)
+                        print(str([sample_id for sample_id, sample in self.samples.items()]))
 
             with open(self.logfile, "a") as log:
                 msg = "The directory given to register merge_samples output is set to: " + merge_samples_outdir + "\n"
@@ -403,6 +439,11 @@ class Experiment:
                 log.write(msg)
                 return 3
 
+        if not os.path.exists("tsv_to_bam_all_clusters_scripts"):
+            os.makedirs("tsv_to_bam_all_clusters_scripts", exist_ok=True)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+
         with open(self.logfile, "a") as log:
             try:    
                 self.tsv_to_bam_results = []
@@ -419,8 +460,14 @@ class Experiment:
                             return 4
                         outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
                         # If multi_subset_bam is available, we can do this with rust to speed things up
-                        if multi_subset_bam:
-                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_all_clusters, bam, outdir_sample, True)) 
+                        if multi_subset_bam:     
+                            prefix = os.path.join(outdir, (sample_id + "_"))
+                            tsvs = ','.join([c.tsv for c in sample.clusters])
+                            cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", prefix]
+                            log.write(" ".join(cmd) + "\n\n")
+                            result = run_instruction(cmd = cmd, fun = "tsv_to_bam_all_clusters", name = ("sample_" + sample_id), fun_module = "tsv_to_bam_all_clusters", dry_run = False, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
+                            print(result)
+                            self.tsv_to_bam_results.append(result[1])
                         else:
                             # If not, we can do it with illumina's subset-bam
                             for cluster in sample.clusters:
