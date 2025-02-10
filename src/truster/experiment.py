@@ -6,6 +6,7 @@ from .sample import Sample
 from .cluster import Cluster
 from .bcolors import Bcolors
 import concurrent.futures
+import pandas as pd
 import copy
 import gzip
 #from Bio import SeqIO
@@ -97,6 +98,11 @@ class Experiment:
                     msg = f"Registered samples:\n- {registered_samples}"
                     log.write(msg)
                     print(msg)
+
+    def register_samples_from_file(self, samplesheet, folder_names_as_sample_ids=True):
+        samplesheet = pd.read_csv(samplesheet, sep="\t")
+        for i in samplesheet.index:
+            self.register_sample(sample_id = samplesheet.iloc[i]["sample_id"], sample_name = samplesheet.iloc[i]["sample_name"], raw_path = samplesheet.iloc[i]["raw_path"])
 
     def md5sum_samples(self, outdir, jobs=1):
         try:
