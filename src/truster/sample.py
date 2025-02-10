@@ -184,21 +184,3 @@ class Sample:
                 log.write(msg)
 
 
-    def tsv_to_bam_all_clusters(self, bam, outdir, dry_run=False):
-        with open(self.logfile, "a") as log:
-            try:
-                if not os.path.exists("tsv_to_bam_all_clusters_scripts"):
-                    os.makedirs("tsv_to_bam_all_clusters_scripts", exist_ok=True)
-                if not os.path.exists(outdir):
-                    os.makedirs(outdir, exist_ok=True)
-                prefix = os.path.join(outdir, (self.sample_id + "_"))
-                tsvs = ','.join([c.tsv.strip() for c in self.clusters])
-                cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", prefix]
-                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_all_clusters", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam_all_clusters", dry_run = dry_run, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
-                log.write(str(cmd))
-                return result
-            except KeyboardInterrupt:
-                msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC + "\n"
-                log.write(msg)
-
-
