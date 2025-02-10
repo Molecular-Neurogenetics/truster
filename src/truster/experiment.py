@@ -466,7 +466,6 @@ class Experiment:
                             cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", prefix]
                             log.write(" ".join(cmd) + "\n\n")
                             result = run_instruction(cmd = cmd, fun = "tsv_to_bam_all_clusters", name = ("sample_" + sample_id), fun_module = "tsv_to_bam_all_clusters", dry_run = False, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
-                            print(result)
                             self.tsv_to_bam_results.append(result[1])
                         else:
                             # If not, we can do it with illumina's subset-bam
