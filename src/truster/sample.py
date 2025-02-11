@@ -184,3 +184,30 @@ class Sample:
                 log.write(msg)
 
 
+    def tsv_to_bam_clusters(self, outdir, slurm=None, modules=None, dry_run = False):
+         with open(self.logfile, "a") as log:
+            if os.path.isdir(self.quantify_outdir):
+                bam = os.path.join(self.quantify_outdir, "outs/possorted_genome_bam.bam")
+            else:
+                msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
+                log.write(msg)
+                return 4
+            try: 
+                outdir_sample = os.path.join(outdir, "tsv_to_bam/", (self.sample_id + "/"))
+
+                if not os.path.exists(outdir_sample):
+                    os.makedirs(outdir_sample, exist_ok=True)
+
+                tsvs = ','.join([c.tsv for c in self.clusters])
+                cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", outdir_sample]
+                log.write(" ".join(cmd) + "\n\n")
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
+                exit_code = result[1]
+
+                if exit_code == 0:
+                    self.outdirs["tsv_to_bam"] = outdir
+                return result
+                    
+            except KeyboardInterrupt:
+                msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC
+                log.write(msg)

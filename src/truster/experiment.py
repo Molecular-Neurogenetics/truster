@@ -451,22 +451,10 @@ class Experiment:
                 log.write(msg)
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
-                    for sample_id, sample in samples_dict.items():
-                        if os.path.isdir(sample.quantify_outdir):
-                                bam = os.path.join(sample.quantify_outdir, "outs/possorted_genome_bam.bam")
-                        else:
-                            msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
-                            log.write(msg)
-                            return 4
-                        outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
+                    for sample_id, sample in samples_dict.items():  
                         # If multi_subset_bam is available, we can do this with rust to speed things up
                         if multi_subset_bam:     
-                            prefix = os.path.join(outdir, (sample_id + "_"))
-                            tsvs = ','.join([c.tsv for c in sample.clusters])
-                            cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", prefix]
-                            log.write(" ".join(cmd) + "\n\n")
-                            result = run_instruction(cmd = cmd, fun = "tsv_to_bam_all_clusters", name = ("sample_" + sample_id), fun_module = "tsv_to_bam_all_clusters", dry_run = False, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
-                            self.tsv_to_bam_results.append(result[1])
+                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules))
                         else:
                             # If not, we can do it with illumina's subset-bam
                             for cluster in sample.clusters:
