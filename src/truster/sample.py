@@ -194,18 +194,13 @@ class Sample:
                 return 4
             try: 
                 outdir_sample = os.path.join(outdir, "tsv_to_bam/", (self.sample_id + "/"))
-
                 if not os.path.exists(outdir_sample):
                     os.makedirs(outdir_sample, exist_ok=True)
 
-                tsvs = ','.join([c.tsv for c in self.clusters])
-                cmd = ["../bin/multi_subset_bam", "--bam", bam, "--values", tsvs, "--ofile", outdir_sample]
+                tsvs = ' '.join([c.tsv for c in self.clusters])
+                cmd = ["Rustody multi_subset_bam", "-t", "CB", "--bam", bam, "--values", tsvs, "--ofile", outdir_sample]
                 log.write(" ".join(cmd) + "\n\n")
-                result = run_instruction(cmd = cmd, fun = "tsv_to_bam", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
-                exit_code = result[1]
-
-                if exit_code == 0:
-                    self.outdirs["tsv_to_bam"] = outdir
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam_clusters", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
                 return result
                     
             except KeyboardInterrupt:

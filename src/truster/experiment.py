@@ -439,11 +439,6 @@ class Experiment:
                 log.write(msg)
                 return 3
 
-        if not os.path.exists("tsv_to_bam_all_clusters_scripts"):
-            os.makedirs("tsv_to_bam_all_clusters_scripts", exist_ok=True)
-        if not os.path.exists(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
         with open(self.logfile, "a") as log:
             try:    
                 self.tsv_to_bam_results = []
@@ -454,7 +449,11 @@ class Experiment:
                     for sample_id, sample in samples_dict.items():  
                         # If multi_subset_bam is available, we can do this with rust to speed things up
                         if multi_subset_bam:     
-                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules))
+                            if not os.path.exists("tsv_to_bam_clusters_scripts"):
+                                os.makedirs("tsv_to_bam_clusters_scripts", exist_ok=True)
+                            if not os.path.exists(outdir):
+                                os.makedirs(outdir, exist_ok=True)
+                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, False))
                         else:
                             # If not, we can do it with illumina's subset-bam
                             for cluster in sample.clusters:

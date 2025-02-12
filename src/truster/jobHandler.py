@@ -34,7 +34,7 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
         else:
             subprocess.call(cmd)
 
-def run_job(function, job_file, code, slurm, modules, dry_run = False):
+def run_job(function, job_file, code, slurm, modules, modules_path = None, dry_run = False):
     with open(job_file, "w") as fout:
         fout.writelines("#!/bin/bash\n")
         try:
