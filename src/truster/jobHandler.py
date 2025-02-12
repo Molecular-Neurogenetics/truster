@@ -5,7 +5,7 @@ import time
 from .bcolors import Bcolors
 import os
 
-def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, modules = None):
+def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, modules = None, modules_path = None):
     with open(logfile, "a") as log:
         log.write(' '.join(cmd))
         if slurm != None:
@@ -13,7 +13,7 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
             job_file =  os.path.join((fun + "_scripts/"), (name + "_" + fun + ".sh"))
             try:
                 if not dry_run:
-                    job_id, exit_code, msg = run_job(fun_module, job_file, cmd, slurm, modules)
+                    job_id, exit_code, msg = run_job(fun_module, job_file, cmd, slurm, modules, modules_path)
                     # msg = sucess_submit(fun, name, job_id)
                     # log.write(msg)
                     
@@ -45,6 +45,8 @@ def run_job(function, job_file, code, slurm, modules, dry_run = False):
                 fout.writelines("#SBATCH --" + str(k) + "=" + str(v) + "\n")
         fout.writelines("module purge\n")
         try:
+            if modules_path is not None:
+                fout.writelines("module use " + modules_path + "\n")
             for i in modules[function]:
                 fout.writelines("module load " + str(i) + "\n")
         except:

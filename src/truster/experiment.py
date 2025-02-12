@@ -294,7 +294,7 @@ class Experiment:
                 # print('plot_velocity -l <loom> -n <sample_name> -u <umap> -c <clusters> -o <outdir>')
                 cmd = ["python", os.path.join(cwd, "py_scripts/plot_velocity"), "-l", ','.join(loom), "-n", ','.join(names), "-u", ','.join([os.path.join(outdir, (name + "_cell_embeddings.csv")) for name in names]), "-c", ','.join([os.path.join(outdir, (name + "_clusters.csv")) for name in names]), "-o", outdir]
 
-                result = run_instruction(cmd = cmd, fun = "plot_velocity", fun_module = "plot_velocity", dry_run = dry_run, name = self.name, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
+                result = run_instruction(cmd = cmd, fun = "plot_velocity", fun_module = "plot_velocity", dry_run = dry_run, name = self.name, logfile = self.logfile, slurm = self.slurm, modules = self.modules, modules_path = None)
                 exit_code = result[1]
                 if exit_code == 0:
                     exit_code = True
@@ -351,7 +351,7 @@ class Experiment:
                     integrate_samples = "FALSE"
 
                 cmd = ["Rscript", os.path.join(cwd, "r_scripts/merge_samples.R"), "-i", ','.join(samples_seurat_rds), "-o", outdir, "-r", str(res), "-s", ','.join(samples_ids), "-e", self.name, "-n", normalization_method, "-S", max_size, "-I", integrate_samples]
-                result = run_instruction(cmd = cmd, fun = "merge_samples", name = self.name, fun_module = "merge_samples", dry_run = dry_run, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
+                result = run_instruction(cmd = cmd, fun = "merge_samples", name = self.name, fun_module = "merge_samples", dry_run = dry_run, logfile = self.logfile, slurm = self.slurm, modules = self.modules, modules_path = None)
                 exit_code = result[1]
                     
                 # If it finished succesfully then 
@@ -426,7 +426,7 @@ class Experiment:
             log.write(msg)
             print(f"{Bcolors.FAIL}{msg}{Bcolors.ENDC}")
 
-    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, jobs=1):
+    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, modules_path = None, jobs=1):
         print("Running tsv_to_bam with " + str(jobs) + " jobs.\n")
         if mode == "merged":
             samples_dict = self.merge_samples_dict
@@ -929,7 +929,7 @@ class Experiment:
             
             cwd = os.path.dirname(os.path.realpath(__file__))
             cmd = ["Rscript", os.path.join(cwd, "r_scripts/normalize_TEexpression.R"), "-m", "merged", "-g", group_name, "-e", str(include_genes), "-f", factor, "-s", ','.join(group), "-o", outdir_norm, "-i", indir, "-r", rdata, "-n", (self.name)]
-            result = run_instruction(cmd = cmd, fun = "normalize_TE_counts", fun_module = "normalize_TE_counts", dry_run = dry_run, name = (self.name + "_" + group_name), logfile = self.logfile, slurm = self.slurm, modules = self.modules)
+            result = run_instruction(cmd = cmd, fun = "normalize_TE_counts", fun_module = "normalize_TE_counts", dry_run = dry_run, name = (self.name + "_" + group_name), logfile = self.logfile, slurm = self.slurm, modules = self.modules, modules_path = None)
             return result[1]
             
         with open(self.logfile, "a") as log:
@@ -981,7 +981,7 @@ class Experiment:
                 print(msg)
                 log.write(msg)
 
-    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, TE_counts = True, normalize_TE_counts = True, include_genes = False):
+    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, TE_counts = True, normalize_TE_counts = True, include_genes = False):
         with open(self.logfile, "a") as log:
             if mode == "merged" and self.merge_samples_dict is None:
                 msg = f"For merged mode please run merge_samples() or set_merge_clusters_outdir() first.\n"
@@ -1011,7 +1011,7 @@ class Experiment:
                         current_instruction = "tsv_to_bam"
                         msg = "Running " + current_instruction
                         log.write(msg)
-                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, jobs = jobs)
+                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, modules_path = modules_path, jobs = jobs)
                         if not tsv_to_bam:
                             msg = "Error in tsv_to_bam"
                             print(msg)

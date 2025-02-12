@@ -184,7 +184,7 @@ class Sample:
                 log.write(msg)
 
 
-    def tsv_to_bam_clusters(self, outdir, slurm=None, modules=None, dry_run = False):
+    def tsv_to_bam_clusters(self, outdir, slurm=None, modules=None, modules_path = None, dry_run = False):
          with open(self.logfile, "a") as log:
             if os.path.isdir(self.quantify_outdir):
                 bam = os.path.join(self.quantify_outdir, "outs/possorted_genome_bam.bam")
