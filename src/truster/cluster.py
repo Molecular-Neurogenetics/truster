@@ -164,6 +164,41 @@ class Cluster:
                 msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC
                 log.write(msg)
 
+    def gene_count(self, experiment_name, sample_id, bam, outdir, gene_gtf, s=1, unique=True, slurm=None, modules=None, snic_tmp = False, dry_run = False):
+        with open(self.logfile, "a") as log:
+            try:
+                if not os.path.exists("gene_count_scripts"):
+                    os.makedirs("gene_count_scripts", exist_ok=True)
+                if not os.path.exists(outdir):
+                    os.makedirs(outdir, exist_ok=True)
+                
+                if snic_tmp:
+                    snic_bam_dir = "$SNIC_TMP/" # map_cluster/tmp/
+                    cmd = ["cp", bam, os.path.join(snic_bam_dir, (self.cluster_name + "_Aligned.sortedByCoord.out.bam") + ";\n")]
+                    bam = snic_bam_dir + self.cluster_name + "_Aligned.sortedByCoord.out.bam"
+                else:
+                    cmd = []
+
+                if unique:
+                    cmd.extend(["subread-parse.sh featureCounts", "-s", str(s), "-F", "GTF", "-g", "gene_name", "-a", gene_gtf, "-o", os.path.join(outdir, (experiment_name + "_" + self.cluster_name + "_uniqueMap.cntTable")), bam])
+                    function_name = "gene_count"
+                else:
+                    msg = "ERROR: Gene counts available only for unique mapping configuration"
+                    log.write(msg)
+                    return 3
+
+                result = run_instruction(cmd = cmd, fun = "gene_count", name = ("sample_" + sample_id + "_cluster_" +  self.cluster_name), fun_module = function_name, dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
+                exit_code = result[1]
+
+                if exit_code == 0:
+                    self.outdirs[function_name] = outdir
+                return result
+                
+            except KeyboardInterrupt:
+                msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC
+                log.write(msg)
+
+
     def TE_count(self, experiment_name, sample_id, bam, outdir, gene_gtf, te_gtf, s=1, unique=False, slurm=None, modules=None, snic_tmp = False, dry_run = False):
         with open(self.logfile, "a") as log:
             try:
@@ -180,7 +215,7 @@ class Cluster:
                     cmd = []
 
                 if unique:
-                    cmd.extend(["featureCounts", "-s", str(s), "-F", "GTF", "-g", "transcript_id", "-a", te_gtf, "-o", os.path.join(outdir, (experiment_name + "_" + self.cluster_name + "_uniqueMap.cntTable")), bam])
+                    cmd.extend(["subread-parse.sh featureCounts", "-s", str(s), "-F", "GTF", "-g", "transcript_id", "-a", te_gtf, "-o", os.path.join(outdir, (experiment_name + "_" + self.cluster_name + "_uniqueMap.cntTable")), bam])
                 else:
                     if s == 1:
                         stranded = "forward"

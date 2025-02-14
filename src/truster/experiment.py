@@ -861,7 +861,64 @@ class Experiment:
                 msg = Bcolors.HEADER + "User interrupted. Finishing mapping for all clusters of all samples before closing." + Bcolors.ENDC + "\n" + "\n"
                 print(msg)
                 log.write(msg)
-        
+
+
+    def gene_counts_clusters(self, mode, outdir, gene_gtf, unique=True, s=1, jobs=1, snic_tmp = False):
+        print("Running gene_counts with " + str(jobs) + " jobs.\n")
+
+        with open(self.logfile, "a") as log:
+            if unique:
+                subdirectory = "unique"
+            else:
+                msg = "ERROR: Gene counts available only for unique mapping configuration"
+                log.write(msg)
+                return 3
+            try:
+                self.gene_counts_results = []
+                msg = "Quantifying genes.\n"
+                log.write(msg)
+                
+                log.write(str(self.merge_samples_groups))
+                if mode == "merged":
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                        for condition, clusters in self.merge_samples_groups.items():
+                            for cluster in clusters.values():
+                                bam = os.path.join(outdir, "map_cluster/", subdirectory, (cluster.cluster_name + "_Aligned.sortedByCoord.out.bam"))
+                                outdir_sample = os.path.join(outdir, "gene_counts/", subdirectory)
+                                self.gene_counts_results.append(executor.submit(cluster.gene_count, self.name, "Merged", bam, outdir_sample, gene_gtf, s, unique, self.slurm, self.modules, snic_tmp))
+                else:
+                    if mode == "per_sample":
+                        samples_dict = self.samples
+
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                            for sample_id, sample in samples_dict.items():
+                                for cluster in sample.clusters:
+                                    bam = os.path.join(outdir, "map_cluster/", subdirectory, sample_id, (cluster.cluster_name + "_Aligned.sortedByCoord.out.bam"))
+                                    outdir_sample = os.path.join(outdir, "gene_counts/", subdirectory, sample_id)
+                                    self.gene_counts_results.append(executor.submit(cluster.gene_count, self.name, sample_id, bam, outdir_sample, gene_gtf, s, unique, self.slurm, self.modules, snic_tmp))
+                            
+                    else:
+                        msg = "Please specify a mode (merged/per_sample).\n"
+                        print(msg)
+                        log.write(msg)
+                        return 3
+               
+                gene_counts_exit_codes = [i.result()[1] for i in self.gene_counts_results]
+                gene_counts_all_success = all(exit_code == 0 for exit_code in gene_counts_exit_codes)
+
+                if gene_counts_all_success:
+                    msg = "\ngene_counts finished succesfully for all samples!\n"
+                    log.write(msg)
+                    return True
+                else:
+                    msg = "\ngene_counts did not finished succesfully for all samples.\n"
+                    log.write(msg)
+                    return False
+            except KeyboardInterrupt:
+                msg = Bcolors.HEADER + "User interrupted. Finishing gene_counts for all clusters of all samples before closing." + Bcolors.ENDC + "\n" + "\n"
+                print(msg)
+                log.write(msg)
+
     def TE_counts_clusters(self, mode, outdir, gene_gtf, te_gtf, unique=False, s=1, jobs=1, snic_tmp = False):
         print("Running TE_counts with " + str(jobs) + " jobs.\n")
         if unique:
@@ -980,7 +1037,7 @@ class Experiment:
                 print(msg)
                 log.write(msg)
 
-    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, TE_counts = True, normalize_TE_counts = True, include_genes = False):
+    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, gene_counts = True, TE_counts = True, normalize_TE_counts = True, include_genes = False):
         with open(self.logfile, "a") as log:
             if mode == "merged" and self.merge_samples_dict is None:
                 msg = f"For merged mode please run merge_samples() or set_merge_clusters_outdir() first.\n"
@@ -1092,6 +1149,17 @@ class Experiment:
                         map_cluster = self.map_clusters(mode = mode, outdir = outdir, gene_gtf = gene_gtf, star_index = star_index, RAM = RAM, out_tmp_dir = out_tmp_dir, unique = unique, jobs = jobs, snic_tmp = snic_tmp)
                         if not map_cluster:
                             msg = "Error in map_cluster"
+                            print(msg)
+                            log.write(msg)
+                            return False
+
+                    if gene_counts:
+                        current_instruction = "gene_counts"
+                        msg = "map_cluster finished! Moving on to " + current_instruction
+                        log.write(msg)
+                        gene_counts = self.gene_counts_clusters(mode = mode, outdir = outdir, gene_gtf = gene_gtf, unique = unique, s = s, jobs = jobs, snic_tmp = snic_tmp)
+                        if not gene_counts:
+                            msg = "Error in gene_counts"
                             print(msg)
                             log.write(msg)
                             return False
