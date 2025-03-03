@@ -456,6 +456,13 @@ class Experiment:
                             self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, False))
                         else:
                             # If not, we can do it with illumina's subset-bam
+                            if os.path.isdir(sample.quantify_outdir):
+                                bam = os.path.join(sample.quantify_outdir, "outs/possorted_genome_bam.bam")
+                            else:
+                                msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
+                                log.write(msg)
+                                return 4
+                            outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
                             for cluster in sample.clusters:
                                 self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules))
                 # Check exit codes
