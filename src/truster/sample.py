@@ -54,7 +54,7 @@ class Sample:
                 cmd = ["cellranger count"]
                 if nuclei:
                     cmd.append("--include-introns true")
-                cmd.extend(["--id", self.sample_id, "--transcriptome", cr_index, "--sample", self.sample_id, "--fastqs", indir, " || exit 2\nmv", self.sample_id, sample_outdir])
+                cmd.extend(["--id", self.sample_id, "--transcriptome", cr_index, "--create-bam true --sample", self.sample_id, "--fastqs", indir, " || exit 2\nmv", self.sample_id, sample_outdir])
                 log.write("About to run instruction")
                 result = run_instruction(cmd = cmd, fun = "quantify", fun_module = "quantify", dry_run = dry_run, name = self.sample_id, logfile = self.logfile, slurm = self.slurm, modules = self.modules)
                 exit_code = result[1]
