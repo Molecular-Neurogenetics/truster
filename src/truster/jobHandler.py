@@ -16,16 +16,14 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
                     job_id, exit_code, msg = run_job(fun_module, job_file, cmd, slurm, modules, modules_path)
                     # msg = sucess_submit(fun, name, job_id)
                     # log.write(msg)
-                    
                     # exit_code = wait_for_job(job_id)
                     # msg = check_exit_codes(fun, name, job_id, exit_code)
                     log.write(msg)
                     log.write(str(job_id) + " returned " + str(exit_code))
-
                     return [msg, exit_code]
                 else:
                     log.write(cmd + "\n")
-                    run_job(fun_module, job_file, cmd, slurm, modules, dry_run)
+                    run_job(fun_module, job_file, cmd, slurm, modules, logfile, modules_path, dry_run)
                     return [cmd, 0]
             except:
                 msg = generic_error(fun, name)
@@ -34,8 +32,9 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
         else:
             subprocess.call(cmd)
 
-def run_job(function, job_file, code, slurm, modules, modules_path = None, dry_run = False):
-    with open(job_file, "w") as fout:
+
+def run_job(function, job_file, code, slurm, modules, logfile, modules_path = None, dry_run = False):
+    with open(job_file, "w") as fout, open(logfile, "a") as log:
         fout.writelines("#!/bin/bash\n")
         try:
             for k,v in slurm[function].items():
@@ -53,9 +52,9 @@ def run_job(function, job_file, code, slurm, modules, modules_path = None, dry_r
             pass
         fout.writelines('echo "' + code + '" || exit 2 \n')
         fout.writelines(code + " || exit 2 \n")
-
-    if dry_run:
-        return 
+        if dry_run:
+            log.write("This is a dry run")
+            return [code, 0]
 
     sbatch_out = subprocess.run([("sbatch --wait " + str(job_file))], shell=True, stdout=PIPE, stderr=PIPE)
     time.sleep(3)
