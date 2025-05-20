@@ -426,7 +426,9 @@ class Experiment:
             log.write(msg)
             print(f"{Bcolors.FAIL}{msg}{Bcolors.ENDC}")
 
-    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, modules_path = None, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_path = None, jobs=1, dry_run = False):
+
+    # remote_bam_paths: a tabulated file with sample_id bam_path_in_remote_repo
+    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, modules_path = None, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_paths = None, jobs=1, dry_run = False):
         print("Running tsv_to_bam with " + str(jobs) + " jobs.\n")
         if mode == "merged":
             samples_dict = self.merge_samples_dict
@@ -462,6 +464,9 @@ class Experiment:
                                     msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
                                     log.write(msg)
                                     return 4
+                                outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
+                                for cluster in sample.clusters:
+                                    self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules, dry_run))
                             else:
                                 if remote_bam_flag: # If we have the bam files in a remote repository and we need to stream them (using icommands for example)
                                     bam_filename = os.path.basename(remote_bam_path) # Let's keep track of the original filename
@@ -470,9 +475,6 @@ class Experiment:
                                     msg = "Error: You have to make sure that " + sample.quantify_outdir + " exists (quantification out directory) OR specify the needed parameters for remote bams.\n"
                                     log.write(msg)
                                     return 4
-                            outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
-                            for cluster in sample.clusters:
-                                self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules, remote_bam_flag, remote_bam_path, remote_bam_tmpdir, dry_run))
                 # Check exit codes
                 tsv_to_bam_exit_codes = [i.result()[1] for i in self.tsv_to_bam_results]
                 tsv_to_bam_all_success = all(exit_code == 0 for exit_code in tsv_to_bam_exit_codes)
