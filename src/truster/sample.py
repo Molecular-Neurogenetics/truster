@@ -225,5 +225,5 @@ class Sample:
                     cluster_cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", cluster.tsv, "--out-bam", os.path.join(outdir_sample, (cluster.cluster_name + ".bam || echo FAIL: " + cluster.cluster_name + "; "))]    
                     cmd.extend(cluster_cmd)
                 log.write(" ".join(cmd) + "\n\n")
-                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", dry_run = dry_run, fun_module = "tsv_to_bam", name = ("sample_" + self.sample_id), logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", dry_run = dry_run, fun_module = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
                 return result
