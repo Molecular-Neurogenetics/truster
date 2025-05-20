@@ -426,7 +426,7 @@ class Experiment:
             log.write(msg)
             print(f"{Bcolors.FAIL}{msg}{Bcolors.ENDC}")
 
-    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, modules_path = None, jobs=1):
+    def tsv_to_bam_clusters(self, mode, outdir, multi_subset_bam=False, modules_path = None, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_path = None, jobs=1, dry_run = False):
         print("Running tsv_to_bam with " + str(jobs) + " jobs.\n")
         if mode == "merged":
             samples_dict = self.merge_samples_dict
@@ -455,16 +455,24 @@ class Experiment:
                                 os.makedirs(outdir, exist_ok=True)
                             self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, False))
                         else:
-                            # If not, we can do it with illumina's subset-bam
-                            if os.path.isdir(sample.quantify_outdir):
-                                bam = os.path.join(sample.quantify_outdir, "outs/possorted_genome_bam.bam")
+                            if not remote_bam_flag: 
+                                if os.path.isdir(sample.quantify_outdir):
+                                    bam = os.path.join(sample.quantify_outdir, "outs/possorted_genome_bam.bam")
+                                else:
+                                    msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
+                                    log.write(msg)
+                                    return 4
                             else:
-                                msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
-                                log.write(msg)
-                                return 4
+                                if remote_bam_flag: # If we have the bam files in a remote repository and we need to stream them (using icommands for example)
+                                    bam_filename = os.path.basename(remote_bam_path) # Let's keep track of the original filename
+                                    bam = os.path.join(remote_bam_tmpdir, bam_filename) # We will move it to the tmp dir, so we can write the command directly pointing there
+                                else:
+                                    msg = "Error: You have to make sure that " + sample.quantify_outdir + " exists (quantification out directory) OR specify the needed parameters for remote bams.\n"
+                                    log.write(msg)
+                                    return 4
                             outdir_sample = os.path.join(outdir, "tsv_to_bam/", sample_id)
                             for cluster in sample.clusters:
-                                self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules))
+                                self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules, remote_bam_flag, remote_bam_path, remote_bam_tmpdir, dry_run))
                 # Check exit codes
                 tsv_to_bam_exit_codes = [i.result()[1] for i in self.tsv_to_bam_results]
                 tsv_to_bam_all_success = all(exit_code == 0 for exit_code in tsv_to_bam_exit_codes)
@@ -869,7 +877,6 @@ class Experiment:
                 print(msg)
                 log.write(msg)
 
-
     def gene_counts_clusters(self, mode, outdir, gene_gtf, unique=True, s=1, jobs=1, snic_tmp = False):
         print("Running gene_counts with " + str(jobs) + " jobs.\n")
 
@@ -1044,7 +1051,7 @@ class Experiment:
                 print(msg)
                 log.write(msg)
 
-    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, gene_counts = True, TE_counts = True, normalize_TE_counts = True, include_genes = False):
+    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, gene_counts = True, TE_counts = True, normalize_TE_counts = True, include_genes = False, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_path = None, dry_run = False):
         with open(self.logfile, "a") as log:
             if mode == "merged" and self.merge_samples_dict is None:
                 msg = f"For merged mode please run merge_samples() or set_merge_clusters_outdir() first.\n"
@@ -1074,7 +1081,7 @@ class Experiment:
                         current_instruction = "tsv_to_bam"
                         msg = "Running " + current_instruction
                         log.write(msg)
-                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, modules_path = modules_path, jobs = jobs)
+                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, modules_path = modules_path, jobs = jobs, dry_run = dry_run, remote_bam_flag = remote_bam_flag, remote_bam_tmpdir = remote_bam_tmpdir, remote_bam_path = remote_bam_path)
                         if not tsv_to_bam:
                             msg = "Error in tsv_to_bam"
                             print(msg)
@@ -1197,3 +1204,5 @@ class Experiment:
                     msg = Bcolors.HEADER + "User interrupted. Finishing instruction " + current_instruction + " for all clusters of all samples before closing." + Bcolors.ENDC + "\n"
                     print(msg)
                     log.write(msg)
+
+
