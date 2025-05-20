@@ -12,23 +12,17 @@ class Cluster:
         self.outdirs = {"tsv_to_bam" : None, "filter_UMIs" : None, "bam_to_fastq" : None, "concatenate_lanes" : None, "map_cluster" : None, "TE_count_unique" : None, "TE_count" : None}
         self.logfile = logfile
 
-    def tsv_to_bam(self, sample_id, bam, outdir, slurm=None, modules=None, remote_bam_flag = False, remote_bam_path = None, remote_bam_tmpdir = None, dry_run = False):
+    def tsv_to_bam(self, sample_id, bam, outdir, slurm=None, modules=None, dry_run = False):
         if not os.path.exists("tsv_to_bam_scripts"):
             os.makedirs("tsv_to_bam_scripts", exist_ok=True)
         if not os.path.exists(outdir):
             os.makedirs(outdir, exist_ok=True)
         with open(self.logfile, "a") as log:
             try:
-                if not remote_bam_flag:
-                    cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", self.tsv, "--out-bam", os.path.join(outdir, (self.cluster_name + ".bam"))]
-                    
-                    result = run_instruction(cmd = cmd, fun = "tsv_to_bam", name = ("sample_" + sample_id + "_cluster_" +  self.cluster_name), fun_module = "tsv_to_bam", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
-                    exit_code = result[1]
-                else: # We have a remote bam file
-                    # Let's copy it to its tmp dir using iget (bam path was already fixed in experiment.py tsv_to_bam_clusters()) 
-                    cmd = ["iget", remote_bam_path, remote_bam_tmpdir, " || exit 2; ", "subset-bam", "--bam", bam, "--cell-barcodes", self.tsv, "--out-bam", os.path.join(outdir, (self.cluster_name + ".bam"))]
-                    result = run_instruction(cmd = cmd, fun = "tsv_to_bam", name = ("sample_" + sample_id + "_cluster_" +  self.cluster_name), fun_module = "tsv_to_bam", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
-                    exit_code = result[1]
+                cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", self.tsv, "--out-bam", os.path.join(outdir, (self.cluster_name + ".bam"))]
+                
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam", name = ("sample_" + sample_id + "_cluster_" +  self.cluster_name), fun_module = "tsv_to_bam", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules)
+                exit_code = result[1]
                 if exit_code == 0:
                     self.outdirs["tsv_to_bam"] = outdir
                 return result
