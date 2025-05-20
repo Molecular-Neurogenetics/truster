@@ -446,16 +446,17 @@ class Experiment:
                 self.tsv_to_bam_results = []
                 msg = "Extracting cell barcodes from BAM files.\n"
                 log.write(msg)
+                
+                if not os.path.exists("tsv_to_bam_clusters_scripts"):
+                    os.makedirs("tsv_to_bam_clusters_scripts", exist_ok=True)
+                if not os.path.exists(outdir):
+                    os.makedirs(outdir, exist_ok=True)
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
                     for sample_id, sample in samples_dict.items():  
                         # If multi_subset_bam is available, we can do this with rust to speed things up
                         if multi_subset_bam:     
-                            if not os.path.exists("tsv_to_bam_clusters_scripts"):
-                                os.makedirs("tsv_to_bam_clusters_scripts", exist_ok=True)
-                            if not os.path.exists(outdir):
-                                os.makedirs(outdir, exist_ok=True)
-                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, False))
+                            self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, remote_bam_flag, remote_bam_paths, remote_bam_tmpdir, dry_run))
                         else:
                             if not remote_bam_flag: 
                                 if os.path.isdir(sample.quantify_outdir):
@@ -469,8 +470,7 @@ class Experiment:
                                     self.tsv_to_bam_results.append(executor.submit(cluster.tsv_to_bam, sample_id, bam, outdir_sample, self.slurm, self.modules, dry_run))
                             else:
                                 if remote_bam_flag: # If we have the bam files in a remote repository and we need to stream them (using icommands for example)
-                                    bam_filename = os.path.basename(remote_bam_path) # Let's keep track of the original filename
-                                    bam = os.path.join(remote_bam_tmpdir, bam_filename) # We will move it to the tmp dir, so we can write the command directly pointing there
+                                    self.tsv_to_bam_results.append(executor.submit(sample.tsv_to_bam_clusters, outdir, self.slurm, self.modules, modules_path, remote_bam_flag, remote_bam_paths, remote_bam_tmpdir, dry_run))
                                 else:
                                     msg = "Error: You have to make sure that " + sample.quantify_outdir + " exists (quantification out directory) OR specify the needed parameters for remote bams.\n"
                                     log.write(msg)
@@ -1053,7 +1053,7 @@ class Experiment:
                 print(msg)
                 log.write(msg)
 
-    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, gene_counts = True, TE_counts = True, normalize_TE_counts = True, include_genes = False, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_path = None, dry_run = False):
+    def process_clusters(self, mode, outdir, gene_gtf, te_gtf, star_index, RAM, groups = None, factor = "seurat_clusters", out_tmp_dir = None, multi_subset_bam = False, modules_path = None, unique=False, s=1, jobs=1, snic_tmp = False, tsv_to_bam = True, filter_UMIs = True, bam_to_fastq = True, concatenate_lanes = True, merge_clusters = True, map_cluster = True, gene_counts = True, TE_counts = True, normalize_TE_counts = True, include_genes = False, remote_bam_flag = False, remote_bam_tmpdir = None, remote_bam_paths = None, dry_run = False):
         with open(self.logfile, "a") as log:
             if mode == "merged" and self.merge_samples_dict is None:
                 msg = f"For merged mode please run merge_samples() or set_merge_clusters_outdir() first.\n"
@@ -1083,7 +1083,7 @@ class Experiment:
                         current_instruction = "tsv_to_bam"
                         msg = "Running " + current_instruction
                         log.write(msg)
-                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, modules_path = modules_path, jobs = jobs, dry_run = dry_run, remote_bam_flag = remote_bam_flag, remote_bam_tmpdir = remote_bam_tmpdir, remote_bam_path = remote_bam_path)
+                        tsv_to_bam = self.tsv_to_bam_clusters(mode = mode, outdir = outdir, multi_subset_bam = multi_subset_bam, modules_path = modules_path, jobs = jobs, dry_run = dry_run, remote_bam_flag = remote_bam_flag, remote_bam_tmpdir = remote_bam_tmpdir, remote_bam_paths = remote_bam_paths)
                         if not tsv_to_bam:
                             msg = "Error in tsv_to_bam"
                             print(msg)
