@@ -42,14 +42,17 @@ def run_job(function, job_file, code, slurm, modules, logfile, modules_path = No
         except:
             for k,v in slurm["__default__"].items():
                 fout.writelines("#SBATCH --" + str(k) + "=" + str(v) + "\n")
-        fout.writelines("module purge\n")
-        try:
-            if modules_path is not None:
-                fout.writelines("module use " + modules_path + "\n")
-            for i in modules[function]:
-                fout.writelines("module load " + str(i) + "\n")
-        except:
-            pass
+        if modules[function][0] == "conda_env": # I havent thought of a cleaner way of doing this without having to pass around a parameter, but I'll get back to it...
+            fout.writelines(". $HOME/.bashrc; conda activate " + modules[function][1] + "\n")
+        else:
+            fout.writelines("module purge\n")
+            try:
+                if modules_path is not None:
+                    fout.writelines("module use " + modules_path + "\n")
+                for i in modules[function]:
+                    fout.writelines("module load " + str(i) + "\n")
+            except:
+                pass
         fout.writelines('echo "' + code + '" || exit 2 \n')
         fout.writelines(code + " || exit 2 \n")
         if dry_run:
