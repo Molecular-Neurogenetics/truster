@@ -7,6 +7,7 @@ import sys
 from .jobHandler import *
 import pysam
 import concurrent.futures
+import pandas as pd
 from .cluster import Cluster
 from .bcolors import Bcolors
 
@@ -184,25 +185,45 @@ class Sample:
                 log.write(msg)
 
 
-    def tsv_to_bam_clusters(self, outdir, slurm=None, modules=None, modules_path = None, dry_run = False):
+    def tsv_to_bam_clusters(self, outdir, slurm=None, modules=None, modules_path = None, remote_bam_flag = False, remote_bam_paths = None, remote_bam_tmpdir = None, dry_run = False):
          with open(self.logfile, "a") as log:
-            if os.path.isdir(self.quantify_outdir):
-                bam = os.path.join(self.quantify_outdir, "outs/possorted_genome_bam.bam")
-            else:
-                msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
-                log.write(msg)
-                return 4
-            try: 
-                outdir_sample = os.path.join(outdir, "tsv_to_bam/", (self.sample_id + "/"))
-                if not os.path.exists(outdir_sample):
-                    os.makedirs(outdir_sample, exist_ok=True)
+            outdir_sample = os.path.join(outdir, "tsv_to_bam/", (self.sample_id + "/"))
+            if not os.path.exists(outdir_sample):
+                os.makedirs(outdir_sample, exist_ok=True)
+            
+            if not remote_bam_flag:
+                if os.path.isdir(self.quantify_outdir):
+                    bam = os.path.join(self.quantify_outdir, "outs/possorted_genome_bam.bam")
+                else:
+                    msg = "Error: File not found. Please make sure that " + sample.quantify_outdir + " exists.\n"
+                    log.write(msg)
+                    return 4
+                try: 
+                    tsvs = ' '.join([c.tsv for c in self.clusters])
+                    cmd = ["Rustody multi_subset_bam", "-t", "CB", "--bam", bam, "--values", tsvs, "--ofile", outdir_sample]
+                    log.write(" ".join(cmd) + "\n\n")
+                    result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam_clusters", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
+                    return result
+                except KeyboardInterrupt:
+                    msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC
+                    log.write(msg)
+            # We have a remote bam file
+            # But I dont want to load to the node the bam files one per cluster in a sample, so, I'll put them all in one job
+            # For my use case this is ok (dealing with 5 clusters), but beware!
+            else: 
+                remote_bam_tmpdir = os.path.join(remote_bam_tmpdir, (self.sample_id + ".bam"))
+                bam_paths = pd.read_csv(remote_bam_paths, sep = "\t")
+                bam_paths = bam_paths.set_index("sample_id")
+                sample_remote_bam_path = bam_paths.loc[self.sample_id, "path_bam"]
+                bam = remote_bam_tmpdir # We will move it to the tmp dir, so we can write the command directly pointing there
+                bai = (remote_bam_tmpdir + ".bai")
 
-                tsvs = ' '.join([c.tsv for c in self.clusters])
-                cmd = ["Rustody multi_subset_bam", "-t", "CB", "--bam", bam, "--values", tsvs, "--ofile", outdir_sample]
+                # Let's copy it to its tmp dir using iget (bam path was already fixed in experiment.py tsv_to_bam_clusters()) 
+                cmd = ["iget", sample_remote_bam_path, bam, " || exit 2; ", "iget", (sample_remote_bam_path + ".bai"), bai, " || exit 2; "] 
+                
+                for cluster in self.clusters:
+                    cluster_cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", cluster.tsv, "--out-bam", os.path.join(outdir_sample, (cluster.cluster_name + ".bam || echo FAIL: " + cluster.cluster_name + "; "))]    
+                    cmd.extend(cluster_cmd)
                 log.write(" ".join(cmd) + "\n\n")
-                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), fun_module = "tsv_to_bam_clusters", dry_run = dry_run, logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", dry_run = dry_run, fun_module = "tsv_to_bam", name = ("sample_" + self.sample_id), logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
                 return result
-                    
-            except KeyboardInterrupt:
-                msg = Bcolors.HEADER + "User interrupted" + Bcolors.ENDC
-                log.write(msg)
