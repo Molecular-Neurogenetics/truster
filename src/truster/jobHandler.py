@@ -2,14 +2,16 @@
 import subprocess
 from subprocess import PIPE
 import time
+import re
 from .bcolors import Bcolors
 import os
 
-def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, modules = None, modules_path = None):
+def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, modules = None, modules_path = None, add_exit = True, echo_new_lines = True):
     with open(logfile, "a") as log:
         log.write(' '.join(cmd))
         if slurm != None:
             cmd = ' '.join(cmd)
+            cmd = re.sub(r"\n ", "\n", cmd) 
             job_file =  os.path.join((fun + "_scripts/"), (name + "_" + fun + ".sh"))
             try:
                 if not dry_run:
@@ -23,7 +25,7 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
                     return [msg, exit_code]
                 else:
                     log.write(cmd + "\n")
-                    run_job(fun_module, job_file, cmd, slurm, modules, logfile, modules_path, dry_run)
+                    run_job(fun_module, job_file, cmd, slurm, modules, logfile, modules_path, dry_run, add_exit, echo_new_lines)
                     return [cmd, 0]
             except:
                 msg = generic_error(fun, name)
@@ -33,7 +35,7 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
             subprocess.call(cmd)
 
 
-def run_job(function, job_file, code, slurm, modules, logfile, modules_path = None, dry_run = False):
+def run_job(function, job_file, code, slurm, modules, logfile, modules_path = None, dry_run = False, add_exit = True, echo_new_lines = True):
     with open(job_file, "w") as fout, open(logfile, "a") as log:
         fout.writelines("#!/bin/bash\n")
         try:
@@ -53,8 +55,17 @@ def run_job(function, job_file, code, slurm, modules, logfile, modules_path = No
                     fout.writelines("module load " + str(i) + "\n")
             except:
                 pass
-        fout.writelines('echo "' + code + '" || exit 2 \n')
-        fout.writelines(code + " || exit 2 \n")
+        if echo_new_lines:
+            fout.writelines('echo "' + code + '" || exit 2; \n\n')
+        else:
+            echo_code = re.sub(r"\n", " ", code) 
+            fout.writelines('echo "' + echo_code + '" || exit 2; \n\n')
+        
+        if add_exit:
+            fout.writelines(code + " || exit 2; \n")
+        else:
+            fout.writelines(code + "\n")
+
         if dry_run:
             log.write("This is a dry run")
             return [code, 0]

@@ -219,11 +219,19 @@ class Sample:
                 bai = (remote_bam_tmpdir + ".bai")
 
                 # Let's copy it to its tmp dir using iget (bam path was already fixed in experiment.py tsv_to_bam_clusters()) 
-                cmd = ["iget", sample_remote_bam_path, bam, " || exit 2; ", "iget", (sample_remote_bam_path + ".bai"), bai, " || exit 2; "] 
+                cmd = ["iget", sample_remote_bam_path, bam, "|| exit 2;\n", "iget", (sample_remote_bam_path + ".bai"), bai, "|| exit 2;\n"] 
                 
                 for cluster in self.clusters:
-                    cluster_cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", cluster.tsv, "--out-bam", os.path.join(outdir_sample, (cluster.cluster_name + ".bam || echo FAIL: " + cluster.cluster_name + "; "))]    
+                    cluster_cmd = ["subset-bam", "--bam", bam, "--cell-barcodes", cluster.tsv, "--out-bam", os.path.join(outdir_sample, (cluster.cluster_name + ".bam || echo FAIL " + cluster.cluster_name + "; exit 2;\n"))]    
                     cmd.extend(cluster_cmd)
-                log.write(" ".join(cmd) + "\n\n")
-                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", dry_run = dry_run, fun_module = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path)
+                log.write(re.sub(r"\n", " ", ' '.join(cmd)) + "\n\n")
+                result = run_instruction(cmd = cmd, fun = "tsv_to_bam_clusters", dry_run = dry_run, fun_module = "tsv_to_bam_clusters", name = ("sample_" + self.sample_id), logfile = self.logfile, slurm = slurm, modules = modules, modules_path = modules_path, add_exit = False, echo_new_lines = False)
                 return result
+
+
+
+
+
+
+
+
