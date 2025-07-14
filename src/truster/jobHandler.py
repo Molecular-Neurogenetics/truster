@@ -15,7 +15,7 @@ def run_instruction(cmd, fun, dry_run, fun_module, name, logfile, slurm = None, 
             job_file =  os.path.join((fun + "_scripts/"), (name + "_" + fun + ".sh"))
             try:
                 if not dry_run:
-                    job_id, exit_code, msg = run_job(fun_module, job_file, cmd, slurm, modules, modules_path)
+                    job_id, exit_code, msg = run_job(fun_module, job_file, cmd, slurm, modules, logfile, modules_path, dry_run, add_exit, echo_new_lines)
                     # msg = sucess_submit(fun, name, job_id)
                     # log.write(msg)
                     # exit_code = wait_for_job(job_id)
